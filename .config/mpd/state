@@ -1,0 +1,18 @@
+sw_volume: 95
+audio_device_state:1:my_fifo
+audio_device_state:1:pipewire output
+state: stop
+current: 0
+random: 0
+repeat: 1
+single: 0
+consume: 1
+crossfade: 0
+mixrampdb: 0
+mixrampdelay: -1
+lastloadedplaylist: 
+playlist_begin
+0:Opeth/Still Life/Opeth - Still Life - 05 - Face of Melinda.flac
+1:Opeth/Still Life/Opeth - Still Life - 06 - Serenity Painted Death.flac
+2:Opeth/Still Life/Opeth - Still Life - 07 - White Cluster.flac
+playlist_end
