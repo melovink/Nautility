@@ -126,18 +126,21 @@ hl.bind(mod .. " + G", hl.dsp.exec_cmd("qs ipc -c boring call bottomBar toggleGi
 -- timer watches the keysym instead. 40ms is well under a perceptible delay.
 local barHoldTimer = nil
 
-hl.bind("SUPER_L", function()
-    hl.exec_cmd("qs ipc -c boring call bottomBar holdBar")
-    if barHoldTimer then
-        barHoldTimer:set_enabled(false)
-    end
-    barHoldTimer = hl.timer(function()
-        if not hl.is_key_down("Super_L") then
-            hl.exec_cmd("qs ipc -c boring call bottomBar unholdBar")
-            barHoldTimer:set_enabled(false)
-        end
-    end, { timeout = 40, type = "repeat" })
-end)
+-- Toggle: SUPER + Escape expands the island, press again to collapse it.
+hl.bind(mod .. " + Escape", hl.dsp.exec_cmd("qs ipc -c boring call bottomBar toggleBar"))
+
+-- hl.bind("SUPER_L", function()
+--     hl.exec_cmd("qs ipc -c boring call bottomBar holdBar")
+--     if barHoldTimer then
+--         barHoldTimer:set_enabled(false)
+--     end
+--     barHoldTimer = hl.timer(function()
+--         if not hl.is_key_down("Super_L") then
+--             hl.exec_cmd("qs ipc -c boring call bottomBar unholdBar")
+--             barHoldTimer:set_enabled(false)
+--         end
+--     end, { timeout = 40, type = "repeat" })
+-- end)
 hl.bind(mod .. " + tab", hl.dsp.exec_cmd("/home/melovink/.config/hypr/scripts/touchpad_toggle.sh"))
 
 -----------
