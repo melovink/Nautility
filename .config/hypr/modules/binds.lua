@@ -10,7 +10,9 @@ hl.bind(mod .. " + F", hl.dsp.exec_cmd("zen-browser"))
 --Menu--
 --------
 --hl.bind(mod .. " + R", hl.dsp.exec_cmd("/home/melovink/.config/hypr/scripts/open-surface.sh launcher"))
-hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("quickshell ipc -c boring call bottomBar showLauncher"))
+--hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("quickshell ipc -c boring call bottomBar showLauncher"))--
+-- Spotlight-style launcher: apps and ~/AppImage entries only, no files or folders.
+hl.bind("ALT + SPACE", hl.dsp.exec_cmd("quickshell ipc -c spotlight call spotlightWindow toggle"))
 
 -----------------------
 --Window Manipulation--
@@ -117,7 +119,26 @@ hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("mpc toggle"))
 ------------------------------------
 hl.bind(mod .. " + W", hl.dsp.exec_cmd("quickshell ipc -c boring call bottomBar showWallpaper &"))
 hl.bind(mod .. " + G", hl.dsp.exec_cmd("qs ipc -c boring call bottomBar toggleGif &"))
-hl.bind(mod .. " + T", hl.dsp.exec_cmd("/home/melovink/.config/hypr/scripts/touchpad_toggle.sh"))
+-- Peek: hold left Super to expand the bar, release to collapse it.
+-- A `release` bind is registered correctly here but Hyprland never delivers the
+-- release edge for a modifier key, so it is not used. CInputState::isKeysymDown
+-- reads m_pressed, which does contain Super_L while it is held, so a short repeat
+-- timer watches the keysym instead. 40ms is well under a perceptible delay.
+local barHoldTimer = nil
+
+hl.bind("SUPER_L", function()
+    hl.exec_cmd("qs ipc -c boring call bottomBar holdBar")
+    if barHoldTimer then
+        barHoldTimer:set_enabled(false)
+    end
+    barHoldTimer = hl.timer(function()
+        if not hl.is_key_down("Super_L") then
+            hl.exec_cmd("qs ipc -c boring call bottomBar unholdBar")
+            barHoldTimer:set_enabled(false)
+        end
+    end, { timeout = 40, type = "repeat" })
+end)
+hl.bind(mod .. " + tab", hl.dsp.exec_cmd("/home/melovink/.config/hypr/scripts/touchpad_toggle.sh"))
 
 -----------
 --Battery--
