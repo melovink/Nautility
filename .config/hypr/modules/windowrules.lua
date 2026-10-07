@@ -34,3 +34,19 @@ hl.window_rule({
 	},
 	no_focus = true,
 })
+
+local floating = hl.window_rule({
+	name = "smaller-floating",
+	match = { float = true, class = "^$", title = "^$" },
+	size = { "window_w  = 800", "window_h = 500" },
+	
+})
+
+-- hl.window_rule({
+--   name      = "move-kitty",
+--   match     = { class = "kitty" },
+--   move      = {100, 100},
+--   animation = "popin",
+-- })
+
+floating:set_enabled(true)

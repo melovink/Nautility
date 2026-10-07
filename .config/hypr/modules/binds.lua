@@ -9,9 +9,6 @@ hl.bind(mod .. " + F", hl.dsp.exec_cmd("zen-browser"))
 --------
 --Menu--
 --------
---hl.bind(mod .. " + R", hl.dsp.exec_cmd("/home/melovink/.config/hypr/scripts/open-surface.sh launcher"))
---hl.bind(mod .. " + SPACE", hl.dsp.exec_cmd("quickshell ipc -c boring call bottomBar showLauncher"))--
--- Spotlight-style launcher: apps and ~/AppImage entries only, no files or folders.
 hl.bind("ALT + SPACE", hl.dsp.exec_cmd("quickshell ipc -c spotlight call spotlightWindow toggle"))
 
 -----------------------
@@ -19,13 +16,21 @@ hl.bind("ALT + SPACE", hl.dsp.exec_cmd("quickshell ipc -c spotlight call spotlig
 -----------------------
 hl.bind(mod .. " + X", hl.dsp.window.close())
 hl.bind(mod .. " + SHIFT + X", hl.dsp.window.kill())
-hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
+-- hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
+
+hl.bind(mod .. " + V", function()
+    hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
+    hl.dispatch(hl.dsp.window.resize({ x = 1300, y = 800, relative = false }))
+    hl.dispatch(hl.dsp.window.center())
+end)
+
+
 hl.bind(mod .. " + P", hl.dsp.window.pseudo())
 hl.bind(mod .. " + S", hl.dsp.layout("togglesplit"))
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+hl.bind(mod .. " + SHIFT + D", hl.dsp.window.resize(), { mouse = true })
 hl.bind(mod .. " + B", hl.dsp.window.fullscreen())
-hl.bind(mod .. " + D", hl.dsp.exec_cmd("~/.config/hypr/scripts/show-desktop.sh"))
 
 hl.bind(mod .. " + SHIFT + J", hl.dsp.layout("swapsplit"))
 

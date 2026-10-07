@@ -6,8 +6,14 @@ hl.config({
 		layout = "dwindle",
 		resize_on_border = true,
 		col = {
-			active_border = "rgb(2E3440)",
-			inactive_border = "rgb(2E3440)",
+			active_border = {
+			colors = { "rgba(fff7ff00)", "rgba(e5e9f055)" },
+			angle = 90,
+        },
+			inactive_border = {
+			colors = { "rgba(fff7ff00)", "rgba(e5e9f055)" },
+			angle = 90,
+        },
 		},
 	},
 	decoration = {
@@ -30,4 +36,10 @@ hl.config({
 			new_optimizations = true,
 		},
 	},
+})
+
+hl.config({
+    misc = {
+        animate_manual_resizes = false,
+    },
 })

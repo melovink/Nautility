@@ -1,0 +1,6 @@
+./.config/mpd/playlists/
+./.config/mpd/database
+./.config/mpd/log
+./.config/mpd/mpd.conf.save
+./.config/mpd/state
+./.config/mpd/sticker.sql
