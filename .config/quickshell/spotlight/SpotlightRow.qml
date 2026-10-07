@@ -1,7 +1,6 @@
 import QtQuick
 
-// One result row: selection fill, icon, label. Selection follows the keyboard
-// index and is also pulled along by hover, the way Spotlight behaves.
+// One result row: keyboard selection, pointer hover, icon and label.
 Item {
     id: row
 
@@ -10,17 +9,25 @@ Item {
     property string iconSource: ""
     property color nord1: "#3B4252"
     property color nord6: "#ECEFF4"
+    property real surfaceOpacity: 0.8
+    property int horizontalMargin: 16
+    property int verticalMargin: 2
     property string fontPrimary: "Outfit"
 
     signal picked()
-    signal hovered()
 
     Rectangle {
         anchors.fill: parent
-        anchors.leftMargin: 8
-        anchors.rightMargin: 8
+        anchors.leftMargin: row.horizontalMargin
+        anchors.rightMargin: row.horizontalMargin
+        anchors.topMargin: row.verticalMargin
+        anchors.bottomMargin: row.verticalMargin
         radius: 6
-        color: row.selected ? row.nord1 : "transparent"
+        color: row.selected
+            ? Qt.alpha(row.nord1, row.surfaceOpacity)
+            : rowMouse.containsMouse
+                ? Qt.alpha(row.nord1, row.surfaceOpacity * 0.45)
+                : "transparent"
 
         Behavior on color {
             ColorAnimation { duration: 80 }
@@ -53,9 +60,9 @@ Item {
     }
 
     MouseArea {
+        id: rowMouse
         anchors.fill: parent
         hoverEnabled: true
         onClicked: row.picked()
-        onEntered: row.hovered()
     }
 }

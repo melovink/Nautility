@@ -1,6 +1,8 @@
 sw_volume: 95
 audio_device_state:1:High Fidelity
-state: stop
+state: pause
+current: 0
+time: 374.592
 random: 0
 repeat: 1
 single: 0
@@ -10,4 +12,7 @@ mixrampdb: 0
 mixrampdelay: -1
 lastloadedplaylist: 
 playlist_begin
+0:Caligula's Horse/Rise Radiant/08 The Ascent.flac
+1:Caligula's Horse/Rise Radiant/09 Don't Give Up.flac
+2:Caligula's Horse/Rise Radiant/10 Message to My Girl.flac
 playlist_end

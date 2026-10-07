@@ -8,16 +8,25 @@ Item {
     id: panel
 
     property bool shown: false
-    property int panelWidth: 680
-    property int panelHeight: 88
+    property int panelWidth: 580
+    property int panelHeight: 48
     property int shadowPad: 46
-    property int rowHeight: 40
+    property real panelRadius: 45
+    property real displayWidth: panelWidth
+    property real displayRadius: panelRadius
+    // QtQuick uses normalized spring values; these preserve the restrained,
+    // slightly rubbery feel of Hyprland's mass 1 / stiffness 790 / dampening 45.
+    readonly property real rubberSpring: 12.0
+    readonly property real rubberDamping: 0.55
+    readonly property real introDiameter: Math.max(panelHeight, listTop + listBottomMargin)
+    property bool introSpringEnabled: false
+    property int rowHeight: 48
     property int fieldTopMargin: 22
-    property int fieldHeight: 40
+    property int fieldHeight: 30
     property int dividerTop: 66
     property int listTop: 76
     property int listBottomMargin: 12
-    property int hPad: 16
+    property int hPad: 46
     property int fieldIconGap: 34
 
     property color nord0: "#2E3440"
@@ -25,6 +34,7 @@ Item {
     property color nord2: "#434C5E"
     property color nord6: "#ECEFF4"
     property string fontPrimary: "Outfit"
+    property real surfaceOpacity: 0.8
 
     property var results: []
     property int selectedIndex: 0
@@ -34,10 +44,46 @@ Item {
     signal moveSelection(int delta)
     signal selectIndex(int index)
     signal activate()
+    signal activateIndex(int index)
     signal dismiss()
 
-    width: panelWidth + shadowPad * 2
+    width: displayWidth + shadowPad * 2
     height: panelHeight + shadowPad * 2
+
+    // Reset to the circle first, then enable the spring for the target jump.
+    // Behavior is used here because it tracks direct property changes reliably
+    // even when the panel is reopened while a previous intro is being cancelled.
+    Behavior on displayWidth {
+        enabled: panel.introSpringEnabled
+        SpringAnimation {
+            spring: panel.rubberSpring
+            damping: panel.rubberDamping
+            mass: 1
+            epsilon: 0.25
+        }
+    }
+
+    Behavior on displayRadius {
+        enabled: panel.introSpringEnabled
+        SpringAnimation {
+            spring: panel.rubberSpring
+            damping: panel.rubberDamping
+            mass: 1
+            epsilon: 0.01
+        }
+    }
+
+    Timer {
+        id: introStartTimer
+        interval: 1
+        repeat: false
+        onTriggered: {
+            if (!panel.shown) return;
+            panel.introSpringEnabled = true;
+            panel.displayWidth = panel.panelWidth;
+            panel.displayRadius = panel.panelRadius;
+        }
+    }
 
     // Reads iconRevision so every row's Image re-resolves its source when an
     // AppImage extraction lands mid-session.
@@ -53,7 +99,17 @@ Item {
     // `visible` is already true on the focused monitor when the panel is created,
     // so it never changes and would never trigger a reset.
     onShownChanged: {
-        if (!shown) return;
+        if (!shown) {
+            focusTimer.stop();
+            introStartTimer.stop();
+            introSpringEnabled = false;
+            return;
+        }
+        introStartTimer.stop();
+        introSpringEnabled = false;
+        displayWidth = introDiameter;
+        displayRadius = introDiameter / 2;
+        introStartTimer.restart();
         focusTimer.restart();
     }
     onVisibleChanged: {
@@ -78,48 +134,28 @@ Item {
         else if (panel.selectedIndex > list.lastVisibleIndex) list.positionViewAtIndex(panel.selectedIndex);
     }
 
-    // Drop shadow. This is a layer of its own that contains nothing but a caster
-    // shape, because MultiEffect given a source Item re-renders that item stretched
-    // across the effect's whole rect, and a soft shadow needs blurEnabled, which
-    // would also blur the text. Isolating the caster gives a soft shadow while the
-    // panel content stays sharp and is drawn once, on top.
-    //
-    // The caster is inset by shadowPad, which is wider than the blur radius, so the
-    // shadow lands wholly inside the layer bounds and is never clipped.
-    Item {
-        id: shadowHost
-        anchors.fill: parent
-
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            blurEnabled: true
-            blur: 0.22
-            blurMax: 64
-            shadowOpacity: 0.5
-            shadowHorizontalOffset: 0
-            shadowVerticalOffset: 2
-            shadowColor: "#000000"
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: panel.shadowPad
-            radius: 14
-            color: "#000000"
-        }
+    // Low-alpha shadow. Keeping the shadow itself translucent prevents it from
+    // becoming an opaque backing layer beneath the panel body.
+    RectangularShadow {
+        id: panelShadow
+        x: panel.shadowPad
+        y: panel.shadowPad
+        width: panel.displayWidth
+        height: panel.panelHeight
+        radius: panel.displayRadius
+        blur: 18
+        color: "#30000000"
+        offset: Qt.vector2d(0, 2)
     }
 
-    Rectangle {
+    GradientBorder {
         id: body
         x: panel.shadowPad
         y: panel.shadowPad
-        width: panel.panelWidth
+        width: panel.displayWidth
         height: panel.panelHeight
-        radius: 14
-        color: panel.nord0
-        border.color: panel.nord2
-        border.width: 1
+        radius: panel.displayRadius
+        color: Qt.alpha(panel.nord0, panel.surfaceOpacity)
         clip: true
 
         Behavior on height {
@@ -176,7 +212,7 @@ Item {
             height: panel.fieldHeight
             verticalAlignment: TextInput.AlignVCenter
             color: panel.nord6
-            selectionColor: panel.nord1
+            selectionColor: Qt.alpha(panel.nord1, panel.surfaceOpacity)
             selectedTextColor: panel.nord6
             font.family: panel.fontPrimary
             font.pixelSize: 21
@@ -226,7 +262,7 @@ Item {
             y: panel.dividerTop
             width: parent.width - panel.hPad * 2
             height: 1
-            color: panel.nord2
+            color: Qt.alpha(panel.nord2, panel.surfaceOpacity)
             opacity: 0.75
         }
 
@@ -252,9 +288,9 @@ Item {
                 iconSource: panel.iconSource(modelData)
                 nord1: panel.nord1
                 nord6: panel.nord6
+                surfaceOpacity: panel.surfaceOpacity
                 fontPrimary: panel.fontPrimary
-                onPicked: panel.activate()
-                onHovered: panel.selectIndex(index)
+                onPicked: panel.activateIndex(index)
             }
         }
     }

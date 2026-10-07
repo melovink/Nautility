@@ -16,29 +16,41 @@ ShellRoot {
     property color nord2: "#434C5E"
     property color nord6: "#ECEFF4"
     property string fontPrimary: "Outfit"
+    readonly property real surfaceOpacity: 0.69
 
     // ---- Geometry ----
     // The panel is a fixed 680 wide and animates between a bare search bar and
     // panelMaxRows visible rows; nothing below ever exceeds the width.
-    readonly property int panelWidth: 680
+    readonly property int panelWidth: 580
     readonly property int panelMaxRows: 9
-    readonly property int rowHeight: 40
+    // Extra vertical breathing room keeps app names and icons legible.
+    readonly property int rowHeight: 48
     readonly property int fieldTopMargin: 22
     readonly property int fieldHeight: 40
     readonly property int dividerTop: 66
     readonly property int listTop: 76
-    readonly property int listBottomMargin: 12
+    // Keep the final row clear of the panel's large rounded bottom corners,
+    // but keep the empty search bar compact.
+    readonly property int listBottomMargin: results.length > 0 ? 24 : 12
     readonly property int listRows: Math.min(results.length, panelMaxRows)
     readonly property int panelHeight: listTop + listRows * rowHeight + listBottomMargin
     readonly property int shadowPad: 46
     // Visible top edge of the panel at ~22% down the screen, as macOS Spotlight sits.
     readonly property int panelTopMargin: 232
+    // Tune the Spotlight fade here. The actual blur radius is controlled by
+    // ../hypr/modules/decorations.lua under decoration.blur.size and passes.
+    readonly property int fadeDuration: 180
 
     readonly property string appImageDir: (Quickshell.env("HOME") || "") + "/AppImage"
     readonly property string iconCacheDir: Quickshell.cacheDir + "/appimages"
 
     // ---- State ----
     property bool shown: false
+    // Keep the transparent layer alive for one compositor frame while its blur
+    // region is cleared. Hiding it immediately can leave one stale blurred frame.
+    property bool surfaceVisible: false
+    property bool blurActive: false
+    property real visualOpacity: 0
     property string query: ""
     property int selectedIndex: 0
     property var appImages: []
@@ -90,6 +102,31 @@ ShellRoot {
     }
     onShownChanged: {
         if (!root.shown) root.query = "";
+    }
+
+    Timer {
+        id: blurTeardownTimer
+        interval: 32
+        onTriggered: {
+            root.surfaceVisible = false;
+            root.visualOpacity = 0;
+        }
+    }
+
+    NumberAnimation {
+        id: fadeAnimation
+        target: root
+        property: "visualOpacity"
+        duration: root.fadeDuration
+        easing.type: Easing.OutCubic
+        onFinished: {
+            // Keep the blur region active for the whole fade, then remove it and
+            // leave the transparent layer up for one compositor frame.
+            if (!root.shown) {
+                root.blurActive = false;
+                blurTeardownTimer.restart();
+            }
+        }
     }
 
     IpcHandler {
@@ -229,12 +266,30 @@ ShellRoot {
 
     // ---- Actions ----
     function show(): void {
+        blurTeardownTimer.stop();
+        fadeAnimation.stop();
+        root.surfaceVisible = true;
+        root.blurActive = true;
         root.query = "";
         root.selectedIndex = 0;
         root.shown = true;
+        fadeAnimation.from = root.visualOpacity;
+        fadeAnimation.to = 1;
+        fadeAnimation.restart();
         root.scanAppImages();
     }
-    function hide(): void { root.shown = false; }
+    function hide(): void {
+        fadeAnimation.stop();
+        root.shown = false;
+        if (!root.surfaceVisible) {
+            root.blurActive = false;
+            root.visualOpacity = 0;
+            return;
+        }
+        fadeAnimation.from = root.visualOpacity;
+        fadeAnimation.to = 0;
+        fadeAnimation.restart();
+    }
     function toggle(): void {
         if (root.shown) { root.hide(); return; }
         root.show();
@@ -269,6 +324,11 @@ ShellRoot {
         root.launch(root.results[root.selectedIndex]);
     }
 
+    function activateIndex(index): void {
+        if (index < 0 || index >= root.results.length) return;
+        root.launch(root.results[index]);
+    }
+
     Component.onCompleted: root.scanAppImages()
 
     // ---- Windows ----
@@ -282,27 +342,36 @@ ShellRoot {
             required property var modelData
             screen: modelData
 
-            visible: root.shown
+            visible: root.surfaceVisible
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore
             anchors { top: true; left: true; right: true; bottom: true }
+            HyprlandWindow.opacity: root.visualOpacity
+
+            BackgroundEffect.blurRegion: Region {
+                // Blur the desktop behind Spotlight, but remove it before the
+                // layer is hidden so closing cannot flash a stale blurred frame.
+                item: root.blurActive ? spotlightWindow.contentItem : null
+            }
 
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.namespace: "spotlight"
-            WlrLayershell.keyboardFocus: modelData.name === root.focusedScreen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: root.shown && modelData.name === root.focusedScreen
+                ? WlrKeyboardFocus.Exclusive
+                : WlrKeyboardFocus.None
 
-            Rectangle {
+            // Transparent click-catcher: the compositor blur is the only full-screen
+            // backdrop; the panel itself supplies the translucent surface.
+            MouseArea {
                 anchors.fill: parent
-                color: Qt.rgba(0, 0, 0, 0.35)
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: root.hide()
-                }
+                visible: root.surfaceVisible
+                enabled: root.shown
+                onClicked: root.hide()
             }
 
             SpotlightPanel {
                 id: panel
-                visible: modelData.name === root.focusedScreen
+                visible: root.surfaceVisible && modelData.name === root.focusedScreen
                 shown: root.shown
                 x: Math.round((modelData.width - width) / 2)
                 y: Math.max(0, Math.round(modelData.height * 0.22) - root.shadowPad)
@@ -322,6 +391,7 @@ ShellRoot {
                 nord1: root.nord1
                 nord2: root.nord2
                 nord6: root.nord6
+                surfaceOpacity: root.surfaceOpacity
                 fontPrimary: root.fontPrimary
 
                 results: root.results
@@ -334,6 +404,7 @@ ShellRoot {
                 onMoveSelection: delta => root.moveSelection(delta)
                 onSelectIndex: i => root.selectIndex(i)
                 onActivate: root.activateSelected()
+                onActivateIndex: i => root.activateIndex(i)
                 onDismiss: root.hide()
             }
         }
