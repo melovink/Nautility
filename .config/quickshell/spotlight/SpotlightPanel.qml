@@ -170,37 +170,19 @@ Item {
             onClicked: {}
         }
 
-        // Magnifier. Built from plain primitives rather than QtQuick.Shapes because
-        // PathEllipse is not exported by this Qt build.
-        Item {
+        Image {
             id: magnifier
             width: 21
             height: 21
             x: panel.hPad
             y: panel.fieldTopMargin + Math.round((panel.fieldHeight - height) / 2)
+            source: Qt.resolvedUrl("assets/search.svg")
+            fillMode: Image.PreserveAspectFit
+            smooth: true
             opacity: field.text.length === 0 ? 0.4 : 0.75
 
             Behavior on opacity {
                 NumberAnimation { duration: 120 }
-            }
-
-            Rectangle {
-                width: 13
-                height: 13
-                radius: 6.5
-                color: "transparent"
-                border.color: panel.nord6
-                border.width: 1.7
-            }
-
-            Rectangle {
-                width: 2.4
-                height: 8
-                radius: 1.2
-                color: panel.nord6
-                rotation: 45
-                x: 14.3
-                y: 11.5
             }
         }
 
